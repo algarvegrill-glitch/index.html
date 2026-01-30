@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Route 14 Bus Tracker - Alameda to Alvor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .location-section {
+            background: #f7f9fc;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .location-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .status-icon {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ccc;
+        }
+
+        .status-icon.active {
+            background: #10b981;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .select-wrapper {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 16px;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .route-info {
+            background: #f0fdf4;
+            border-left: 4px solid #10b981;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .route-info.show {
+            display: block;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .route-info h3 {
+            color: #065f46;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #d1fae5;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .info-value {
+            color: #065f46;
+            font-weight: 600;
+        }
+
+        .next-buses {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid #d1fae5;
+        }
+
+        .bus-time {
+            background: white;
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .time-large {
+            font-size: 20px;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .time-info {
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        .error {
+            background: #fef2f2;
+            border-left: 4px solid #ef4444;
+            padding: 15px;
+            border-radius: 8px;
+            color: #991b1b;
+            margin-bottom: 20px;
+        }
+
+        .coordinates {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 10px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚌 Carro da Tânia</h1>
+            <p>Melhor que andar a pé</p>
+        </div>
+
+        <div class="content">
+            <div class="select-wrapper">
+                <label for="routeSelect">Select Route:</label>
+                <select id="routeSelect" onchange="changeRoute()">
+                    <option value="14-out">Route 14 - Alameda → Alvor (Outbound)</option>
+                    <option value="14-in">Route 14 - Alvor → Alameda (Inbound)</option>
+                    <option value="11-out">Route 11 - Fortaleza → Igreja de Penina (Outbound)</option>
+                    <option value="11-in">Route 11 - Igreja de Penina → Fortaleza (Inbound)</option>
+                    <option value="34-out">Route 34 - Companheira → EB23/S Bemposta (Outbound)</option>
+                    <option value="34-in">Route 34 - EB23/S Bemposta → Companheira (Inbound)</option>
+                </select>
+            </div>
+
+            <div class="location-section">
+                <div class="location-status">
+                    <div class="status-icon" id="statusIcon"></div>
+                    <span id="locationStatus">Location tracking disabled</span>
+                </div>
+                <button onclick="getLocation()" id="locationBtn">📍 Get My Location</button>
+                <div class="coordinates" id="coordinates"></div>
+            </div>
+
+            <div id="errorMessage"></div>
+
+            <div class="select-wrapper">
+                <label for="fromStop">From (Your nearest stop):</label>
+                <select id="fromStop" onchange="calculateRoute()">
+                    <option value="">-- Select your starting stop --</option>
+                </select>
+            </div>
+
+            <div class="select-wrapper">
+                <label for="toStop">To (Destination):</label>
+                <select id="toStop" onchange="calculateRoute()">
+                    <option value="">-- Select your destination --</option>
+                </select>
+            </div>
+
+            <div class="route-info" id="routeInfo">
+                <h3>📋 Journey Details</h3>
+                <div class="info-row">
+                    <span class="info-label">From:</span>
+                    <span class="info-value" id="fromDisplay"></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">To:</span>
+                    <span class="info-value" id="toDisplay"></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Number of stops:</span>
+                    <span class="info-value" id="stopsCount"></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Estimated time:</span>
+                    <span class="info-value" id="travelTime"></span>
+                </div>
+
+                <div class="next-buses">
+                    <h4 style="margin-bottom: 12px; color: #065f46;">🕒 Next Buses from Your Stop</h4>
+                    <div id="busTimes"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Route 14 OUTBOUND bus stops (Alameda → Alvor)
+        const route14OutStops = [
+            { name: "Alameda Sul", lat: 37.1387, lon: -8.5376, index: 0 },
+            { name: "Alameda Norte", lat: 37.1390, lon: -8.5375, index: 1 },
+            { name: "R. França Borges", lat: 37.1395, lon: -8.5370, index: 2 },
+            { name: "Portimonense", lat: 37.1400, lon: -8.5365, index: 3 },
+            { name: "Av. Zeca Afonso 2", lat: 37.1405, lon: -8.5360, index: 4 },
+            { name: "Auditório 1", lat: 37.1410, lon: -8.5355, index: 5 },
+            { name: "Av. do Brasil 2", lat: 37.1415, lon: -8.5350, index: 6 },
+            { name: "Igr. N. Sra. do Amparo 2", lat: 37.1420, lon: -8.5345, index: 7 },
+            { name: "Alto do Quintão 2", lat: 37.1425, lon: -8.5340, index: 8 },
+            { name: "Sec. Poeta António Aleixo 1", lat: 37.1430, lon: -8.5335, index: 9 },
+            { name: "EB23 D. Martinho C. Branco 1", lat: 37.1435, lon: -8.5330, index: 10 },
+            { name: "Campo de Jogos 1", lat: 37.1440, lon: -8.5325, index: 11 },
+            { name: "R. Jaime Palhinha 1", lat: 37.1445, lon: -8.5320, index: 12 },
+            { name: "Bairro do Figueiras 1", lat: 37.1450, lon: -8.5315, index: 13 },
+            { name: "Vale de França 1", lat: 37.1455, lon: -8.5310, index: 14 },
+            { name: "Av. João Paulo II 2", lat: 37.1185, lon: -8.5340, index: 15 },
+            { name: "Praia do Vau (Cruz.) 2", lat: 37.1180, lon: -8.5350, index: 16 },
+            { name: "Praia do Vau", lat: 37.1175, lon: -8.5360, index: 17 },
+            { name: "Rot. Simão Bolívar 1", lat: 37.1170, lon: -8.5370, index: 18 },
+            { name: "Vau Costa 1", lat: 37.1165, lon: -8.5380, index: 19 },
+            { name: "Facho 1", lat: 37.1160, lon: -8.5390, index: 20 },
+            { name: "Prainha 1", lat: 37.1155, lon: -8.5400, index: 21 },
+            { name: "Sítio do Ribeiro 1", lat: 37.1150, lon: -8.5410, index: 22 },
+            { name: "Torralta - Torre C 1", lat: 37.1145, lon: -8.5420, index: 23 },
+            { name: "Hotel D. João II 1", lat: 37.1140, lon: -8.5430, index: 24 },
+            { name: "Dunas de Alvor", lat: 37.1135, lon: -8.5440, index: 25 },
+            { name: "C. Desportivo Alvor", lat: 37.1130, lon: -8.5450, index: 26 },
+            { name: "Alvor (Marginal)", lat: 37.1368, lon: -8.5965, index: 27 },
+            { name: "EB1 Alvor", lat: 37.1370, lon: -8.5970, index: 28 },
+            { name: "Alvor (Centro)", lat: 37.1372, lon: -8.5975, index: 29 }
+        ];
+
+        // Route 14 INBOUND bus stops (Alvor → Alameda)
+        const route14InStops = [
+            { name: "Alvor (Centro)", lat: 37.1372, lon: -8.5975, index: 0 },
+            { name: "Quinta da Praia", lat: 37.1370, lon: -8.5970, index: 1 },
+            { name: "Hotel D. João II 2", lat: 37.1140, lon: -8.5430, index: 2 },
+            { name: "Torralta - Torre C 2", lat: 37.1145, lon: -8.5420, index: 3 },
+            { name: "Sítio do Ribeiro 2", lat: 37.1150, lon: -8.5410, index: 4 },
+            { name: "Prainha 2", lat: 37.1155, lon: -8.5400, index: 5 },
+            { name: "Facho 2", lat: 37.1160, lon: -8.5390, index: 6 },
+            { name: "Vau Costa 2", lat: 37.1165, lon: -8.5380, index: 7 },
+            { name: "Rot. Simão Bolívar 2", lat: 37.1170, lon: -8.5370, index: 8 },
+            { name: "Praia do Vau", lat: 37.1175, lon: -8.5360, index: 9 },
+            { name: "Praia do Vau (Cruz.) 1", lat: 37.1180, lon: -8.5350, index: 10 },
+            { name: "Av. João Paulo II 1", lat: 37.1185, lon: -8.5340, index: 11 },
+            { name: "Vale de França 2", lat: 37.1455, lon: -8.5310, index: 12 },
+            { name: "Bairro do Figueiras 2", lat: 37.1450, lon: -8.5315, index: 13 },
+            { name: "R. Jaime Palhinha 2", lat: 37.1445, lon: -8.5320, index: 14 },
+            { name: "Campo de Jogos 2", lat: 37.1440, lon: -8.5325, index: 15 },
+            { name: "EB23 D. Martinho C. Branco 2", lat: 37.1435, lon: -8.5330, index: 16 },
+            { name: "Sec. Poeta António Aleixo 4", lat: 37.1430, lon: -8.5335, index: 17 },
+            { name: "Alto do Quintão 1", lat: 37.1425, lon: -8.5340, index: 18 },
+            { name: "Igr. N. Sra. do Amparo 1", lat: 37.1420, lon: -8.5345, index: 19 },
+            { name: "Av. do Brasil 1", lat: 37.1415, lon: -8.5350, index: 20 },
+            { name: "Auditório 2", lat: 37.1410, lon: -8.5355, index: 21 },
+            { name: "Av. Zeca Afonso 1", lat: 37.1405, lon: -8.5360, index: 22 },
+            { name: "Prest. Major David Neto", lat: 37.1400, lon: -8.5365, index: 23 },
+            { name: "R. M. de Albuquerque 1", lat: 37.1395, lon: -8.5370, index: 24 },
+            { name: "R. França Borges", lat: 37.1390, lon: -8.5375, index: 25 }
+        ];
+
+        // Route 11 OUTBOUND bus stops (Fortaleza → Igreja de Penina)
+        const route11OutStops = [
+            { name: "Fortaleza", lat: 37.1200, lon: -8.5300, index: 0 },
+            { name: "Farmácia Praia da Rocha", lat: 37.1195, lon: -8.5310, index: 1 },
+            { name: "Quinta das Parreiras 1", lat: 37.1190, lon: -8.5320, index: 2 },
+            { name: "Encosta da Marina 1", lat: 37.1185, lon: -8.5330, index: 3 },
+            { name: "JI/EB1 Pontal 1", lat: 37.1180, lon: -8.5340, index: 4 },
+            { name: "Sec. Poeta António Aleixo 2", lat: 37.1430, lon: -8.5335, index: 5 },
+            { name: "EB23 D. Martinho C. Branco 1", lat: 37.1435, lon: -8.5330, index: 6 },
+            { name: "Sec. Poeta António Aleixo 1", lat: 37.1430, lon: -8.5340, index: 7 },
+            { name: "Rainha D. Amélia 1", lat: 37.1425, lon: -8.5345, index: 8 },
+            { name: "R. Sidónio Pais 1", lat: 37.1420, lon: -8.5350, index: 9 },
+            { name: "Museu 1", lat: 37.1415, lon: -8.5355, index: 10 },
+            { name: "Clube Naval", lat: 37.1410, lon: -8.5360, index: 11 },
+            { name: "Av. Guanaré 1", lat: 37.1405, lon: -8.5365, index: 12 },
+            { name: "Largo do Dique 1", lat: 37.1400, lon: -8.5370, index: 13 },
+            { name: "Câmara Municipal 2", lat: 37.1395, lon: -8.5375, index: 14 },
+            { name: "Est. de Alvor", lat: 37.1390, lon: -8.5380, index: 15 },
+            { name: "EB1 Major David Neto 1", lat: 37.1385, lon: -8.5385, index: 16 },
+            { name: "Eng. Amaro da Costa", lat: 37.1380, lon: -8.5390, index: 17 },
+            { name: "Sec. Manuel T. Gomes 1", lat: 37.1375, lon: -8.5395, index: 18 },
+            { name: "Rot. Pedra Mourinha 1", lat: 37.1370, lon: -8.5400, index: 19 },
+            { name: "EB23 Eng. Nuno Mergulhão", lat: 37.1365, lon: -8.5405, index: 20 },
+            { name: "Luís de Camões 3", lat: 37.1360, lon: -8.5410, index: 21 },
+            { name: "Luís de Camões 1", lat: 37.1355, lon: -8.5415, index: 22 },
+            { name: "JI/EB1 P. Mourinha / EB23 J. Fialho 1", lat: 37.1350, lon: -8.5420, index: 23 },
+            { name: "Trav. da Pedra 1", lat: 37.1345, lon: -8.5425, index: 24 },
+            { name: "Pedra Mourinha 1", lat: 37.1340, lon: -8.5430, index: 25 },
+            { name: "R. do Clube 1", lat: 37.1335, lon: -8.5435, index: 26 },
+            { name: "R. do Clube 3", lat: 37.1330, lon: -8.5440, index: 27 },
+            { name: "Urb. Jobevi 1", lat: 37.1325, lon: -8.5445, index: 28 },
+            { name: "Sesmarias 1", lat: 37.1320, lon: -8.5450, index: 29 },
+            { name: "Sesmarias de Baixo 1", lat: 37.1315, lon: -8.5455, index: 30 },
+            { name: "Vale das Hortas 3", lat: 37.1310, lon: -8.5460, index: 31 },
+            { name: "Vale das Hortas 2", lat: 37.1305, lon: -8.5465, index: 32 },
+            { name: "Vale das Hortas 1", lat: 37.1300, lon: -8.5470, index: 33 },
+            { name: "Igr. da Penina 3", lat: 37.1295, lon: -8.5475, index: 34 }
+        ];
+
+        // Route 11 INBOUND bus stops (Igreja de Penina → Fortaleza)
+        const route11InStops = [
+            { name: "Igr. da Penina 3", lat: 37.1295, lon: -8.5475, index: 0 },
+            { name: "Vale das Hortas 6", lat: 37.1300, lon: -8.5470, index: 1 },
+            { name: "Sesmarias de Baixo 2", lat: 37.1305, lon: -8.5465, index: 2 },
+            { name: "Sesmarias 2", lat: 37.1310, lon: -8.5460, index: 3 },
+            { name: "Urb. Jobevi 2", lat: 37.1315, lon: -8.5455, index: 4 },
+            { name: "R. do Clube 4", lat: 37.1320, lon: -8.5450, index: 5 },
+            { name: "R. do Clube 2", lat: 37.1325, lon: -8.5445, index: 6 },
+            { name: "Pedra Mourinha 2", lat: 37.1330, lon: -8.5440, index: 7 },
+            { name: "Trav. da Pedra 2", lat: 37.1335, lon: -8.5435, index: 8 },
+            { name: "JI/EB1 P. Mourinha / EB23 J. Fialho 2", lat: 37.1340, lon: -8.5430, index: 9 },
+            { name: "Luís de Camões 2", lat: 37.1345, lon: -8.5425, index: 10 },
+            { name: "Luís de Camões 4", lat: 37.1350, lon: -8.5420, index: 11 },
+            { name: "EB23 Eng. Nuno Mergulhão", lat: 37.1355, lon: -8.5415, index: 12 },
+            { name: "Rot. Pedra Mourinha 2", lat: 37.1360, lon: -8.5410, index: 13 },
+            { name: "Finanças", lat: 37.1365, lon: -8.5405, index: 14 },
+            { name: "Mercado (Av. Dr. F. Sá Carneiro) 1", lat: 37.1370, lon: -8.5400, index: 15 },
+            { name: "Centro de Saúde", lat: 37.1375, lon: -8.5395, index: 16 },
+            { name: "EB1 Major David Neto 2", lat: 37.1380, lon: -8.5390, index: 17 },
+            { name: "Portimonense", lat: 37.1385, lon: -8.5385, index: 18 },
+            { name: "Câmara Municipal 1", lat: 37.1390, lon: -8.5380, index: 19 },
+            { name: "Largo do Dique 2", lat: 37.1395, lon: -8.5375, index: 20 },
+            { name: "Av. Afonso Henriques", lat: 37.1400, lon: -8.5370, index: 21 },
+            { name: "Casa dos Pescadores", lat: 37.1405, lon: -8.5365, index: 22 },
+            { name: "Museu 2", lat: 37.1410, lon: -8.5360, index: 23 },
+            { name: "R. Sidónio Pais 2", lat: 37.1415, lon: -8.5355, index: 24 },
+            { name: "Rainha D. Amélia 2", lat: 37.1420, lon: -8.5350, index: 25 },
+            { name: "Sec. Poeta António Aleixo 3", lat: 37.1425, lon: -8.5345, index: 26 },
+            { name: "Sec. Poeta António Aleixo 4", lat: 37.1430, lon: -8.5340, index: 27 },
+            { name: "EB23 D. Martinho C. Branco 2", lat: 37.1435, lon: -8.5335, index: 28 },
+            { name: "JI/EB1 Pontal 2", lat: 37.1180, lon: -8.5340, index: 29 },
+            { name: "Encosta da Marina 2", lat: 37.1185, lon: -8.5330, index: 30 },
+            { name: "Quinta das Parreiras 2", lat: 37.1190, lon: -8.5320, index: 31 },
+            { name: "Hotel Júpiter", lat: 37.1195, lon: -8.5310, index: 32 },
+            { name: "Hotel Oriental", lat: 37.1198, lon: -8.5305, index: 33 },
+            { name: "Fortaleza", lat: 37.1200, lon: -8.5300, index: 34 }
+        ];
+
+        // Route 14 OUTBOUND schedule (departures from Alameda Sul)
+        const route14OutSchedule = [
+            "07:15", "07:45", "08:15", "08:45", "09:15", "09:45", "10:15", "10:45",
+            "11:15", "11:45", "12:15", "12:45", "13:15", "13:45", "14:15", "14:45",
+            "15:15", "15:45", "16:15", "16:45", "17:15", "17:45", "18:15", "18:45",
+            "19:15", "19:45"
+        ];
+
+        // Route 14 INBOUND schedule (departures from Alvor Centro)
+        const route14InSchedule = [
+            "07:45", "08:15", "08:45", "09:15", "09:45", "10:15", "10:45", "11:15",
+            "11:45", "12:15", "12:45", "13:15", "13:45", "14:15", "14:45", "15:15",
+            "15:45", "16:15", "16:45", "17:15", "17:45", "18:15", "18:45", "19:15",
+            "19:45", "20:15"
+        ];
+
+        // Route 11 OUTBOUND schedule (departures from Fortaleza)
+        const route11OutSchedule = [
+            "07:04", "07:15", "07:46", "08:00", "08:25", "08:45", "09:30", "10:15",
+            "11:00", "11:45", "12:30", "13:15", "14:00", "14:45", "15:30", "16:15",
+            "17:00", "17:45", "18:30", "19:15"
+        ];
+
+        // Route 11 INBOUND schedule (departures from Igreja de Penina)
+        const route11InSchedule = [
+            "07:38", "07:50", "08:20", "08:35", "10:50", "13:05", "13:50", "16:05",
+            "18:20", "19:05"
+        ];
+
+        // Route 34 OUTBOUND bus stops (Companheira → EB23/S Bemposta)
+        const route34OutStops = [
+            { name: "Ladeira do Vau 1", lat: 37.1250, lon: -8.5500, index: 0 },
+            { name: "Rot. Ladeira do Vau 2", lat: 37.1255, lon: -8.5505, index: 1 },
+            { name: "Papagaia 2", lat: 37.1260, lon: -8.5510, index: 2 },
+            { name: "Rot. Malheiro 2", lat: 37.1265, lon: -8.5515, index: 3 },
+            { name: "Vendas 2", lat: 37.1270, lon: -8.5520, index: 4 },
+            { name: "Bom Retiro 2", lat: 37.1275, lon: -8.5525, index: 5 },
+            { name: "R. 25 de Abril", lat: 37.1280, lon: -8.5530, index: 6 },
+            { name: "Companheira", lat: 37.1285, lon: -8.5535, index: 7 },
+            { name: "R. Francisco Monteiro", lat: 37.1290, lon: -8.5540, index: 8 },
+            { name: "Bom Retiro 1", lat: 37.1295, lon: -8.5545, index: 9 },
+            { name: "Hospital", lat: 37.1300, lon: -8.5550, index: 10 },
+            { name: "Rot. Hospital 2", lat: 37.1305, lon: -8.5555, index: 11 },
+            { name: "Cardosas 2", lat: 37.1310, lon: -8.5560, index: 12 },
+            { name: "Romanzeiras 1", lat: 37.1315, lon: -8.5565, index: 13 },
+            { name: "CRACEP 1", lat: 37.1320, lon: -8.5570, index: 14 },
+            { name: "Retail Center 1", lat: 37.1325, lon: -8.5575, index: 15 },
+            { name: "GNR 2", lat: 37.1330, lon: -8.5580, index: 16 },
+            { name: "Centro de Saúde", lat: 37.1375, lon: -8.5395, index: 17 },
+            { name: "Eng. Amaro da Costa", lat: 37.1380, lon: -8.5390, index: 18 },
+            { name: "Sec. Manuel T. Gomes 1", lat: 37.1375, lon: -8.5395, index: 19 },
+            { name: "Rot. Pedra Mourinha 1", lat: 37.1370, lon: -8.5400, index: 20 },
+            { name: "EB23 Eng. Nuno Mergulhão", lat: 37.1365, lon: -8.5405, index: 21 },
+            { name: "Luís de Camões 3", lat: 37.1360, lon: -8.5410, index: 22 },
+            { name: "Luís de Camões 1", lat: 37.1355, lon: -8.5415, index: 23 },
+            { name: "JI/EB1 P. Mourinha / EB23 J. Fialho 1", lat: 37.1350, lon: -8.5420, index: 24 },
+            { name: "Trav. da Pedra 1", lat: 37.1345, lon: -8.5425, index: 25 },
+            { name: "Pedra Mourinha 1", lat: 37.1340, lon: -8.5430, index: 26 },
+            { name: "Pedra Mourinha 3", lat: 37.1338, lon: -8.5432, index: 27 },
+            { name: "Algarve Sol 2", lat: 37.1336, lon: -8.5434, index: 28 },
+            { name: "Bairro Independente 2", lat: 37.1334, lon: -8.5436, index: 29 },
+            { name: "Quinta das Oliveiras 2", lat: 37.1332, lon: -8.5438, index: 30 },
+            { name: "Estr. Bemposta 1", lat: 37.1330, lon: -8.5440, index: 31 },
+            { name: "Dep. de Água 1", lat: 37.1328, lon: -8.5442, index: 32 },
+            { name: "Bemposta 3", lat: 37.1326, lon: -8.5444, index: 33 },
+            { name: "EB23/S Bemposta", lat: 37.1324, lon: -8.5446, index: 34 }
+        ];
+
+        // Route 34 INBOUND bus stops (EB23/S Bemposta → Companheira)
+        const route34InStops = [
+            { name: "EB23/S Bemposta", lat: 37.1324, lon: -8.5446, index: 0 },
+            { name: "Bemposta 2", lat: 37.1326, lon: -8.5444, index: 1 },
+            { name: "Dep. de Água 2", lat: 37.1328, lon: -8.5442, index: 2 },
+            { name: "Estr. Bemposta 2", lat: 37.1330, lon: -8.5440, index: 3 },
+            { name: "Quinta das Oliveiras 1", lat: 37.1332, lon: -8.5438, index: 4 },
+            { name: "Bairro Independente 1", lat: 37.1334, lon: -8.5436, index: 5 },
+            { name: "Algarve Sol 1", lat: 37.1336, lon: -8.5434, index: 6 },
+            { name: "Pedra Mourinha 4", lat: 37.1338, lon: -8.5432, index: 7 },
+            { name: "Pedra Mourinha 2", lat: 37.1340, lon: -8.5430, index: 8 },
+            { name: "Trav. da Pedra 2", lat: 37.1345, lon: -8.5425, index: 9 },
+            { name: "JI/EB1 P. Mourinha / EB23 J. Fialho 2", lat: 37.1350, lon: -8.5420, index: 10 },
+            { name: "Luís de Camões 2", lat: 37.1355, lon: -8.5415, index: 11 },
+            { name: "Luís de Camões 4", lat: 37.1360, lon: -8.5410, index: 12 },
+            { name: "EB23 Eng. Nuno Mergulhão", lat: 37.1365, lon: -8.5405, index: 13 },
+            { name: "Rot. Pedra Mourinha 2", lat: 37.1370, lon: -8.5400, index: 14 },
+            { name: "Centro de Saúde", lat: 37.1375, lon: -8.5395, index: 15 },
+            { name: "Eng. Amaro da Costa", lat: 37.1380, lon: -8.5390, index: 16 },
+            { name: "Sec. Manuel T. Gomes 1", lat: 37.1375, lon: -8.5395, index: 17 },
+            { name: "GNR 1", lat: 37.1330, lon: -8.5580, index: 18 },
+            { name: "Retail Center 2", lat: 37.1325, lon: -8.5575, index: 19 },
+            { name: "CRACEP 2", lat: 37.1320, lon: -8.5570, index: 20 },
+            { name: "Romanzeiras 2", lat: 37.1315, lon: -8.5565, index: 21 },
+            { name: "Cardosas 1", lat: 37.1310, lon: -8.5560, index: 22 },
+            { name: "Rot. Hospital 1", lat: 37.1305, lon: -8.5555, index: 23 },
+            { name: "Hospital", lat: 37.1300, lon: -8.5550, index: 24 },
+            { name: "Bom Retiro 2", lat: 37.1295, lon: -8.5545, index: 25 },
+            { name: "R. 25 de Abril", lat: 37.1290, lon: -8.5540, index: 26 },
+            { name: "Companheira", lat: 37.1285, lon: -8.5535, index: 27 },
+            { name: "R. Francisco Monteiro", lat: 37.1280, lon: -8.5530, index: 28 },
+            { name: "Bom Retiro 1", lat: 37.1275, lon: -8.5525, index: 29 },
+            { name: "Vendas 1", lat: 37.1270, lon: -8.5520, index: 30 },
+            { name: "Rot. Malheiro 1", lat: 37.1265, lon: -8.5515, index: 31 },
+            { name: "Papagaia 1", lat: 37.1260, lon: -8.5510, index: 32 },
+            { name: "Rot. Ladeira do Vau 1", lat: 37.1255, lon: -8.5505, index: 33 },
+            { name: "Ladeira do Vau 2", lat: 37.1250, lon: -8.5500, index: 34 }
+        ];
+
+        // Route 34 OUTBOUND schedule (departures from Ladeira do Vau 1)
+        const route34OutSchedule = [
+            "07:25", "08:35", "11:50", "12:56", "14:45", "16:15", "17:30", "18:35"
+        ];
+
+        // Route 34 INBOUND schedule (departures from EB23/S Bemposta)
+        const route34InSchedule = [
+            "08:00", "09:05", "12:18", "14:00", "15:30", "17:00", "18:00", "19:08"
+        ];
+
+        let currentRoute = "14-out";
+        let busStops = route14OutStops;
+        let busSchedule = route14OutSchedule;
+        let userLocation = null;
+
+        function changeRoute() {
+            currentRoute = document.getElementById('routeSelect').value;
+            
+            if (currentRoute === "14-out") {
+                busStops = route14OutStops;
+                busSchedule = route14OutSchedule;
+            } else if (currentRoute === "14-in") {
+                busStops = route14InStops;
+                busSchedule = route14InSchedule;
+            } else if (currentRoute === "11-out") {
+                busStops = route11OutStops;
+                busSchedule = route11OutSchedule;
+            } else if (currentRoute === "11-in") {
+                busStops = route11InStops;
+                busSchedule = route11InSchedule;
+            } else if (currentRoute === "34-out") {
+                busStops = route34OutStops;
+                busSchedule = route34OutSchedule;
+            } else if (currentRoute === "34-in") {
+                busStops = route34InStops;
+                busSchedule = route34InSchedule;
+            }
+            
+            populateStops();
+            document.getElementById('routeInfo').classList.remove('show');
+            
+            // Re-find nearest stop if location is available
+            if (userLocation) {
+                const nearest = findNearestStop(userLocation.lat, userLocation.lon);
+                document.getElementById('fromStop').value = nearest.stop.index;
+                
+                const distanceM = (nearest.distance * 1000).toFixed(0);
+                document.getElementById('locationStatus').innerHTML = 
+                    `Nearest stop: <strong>${nearest.stop.name}</strong> (${distanceM}m away)`;
+            }
+        }
+
+        function populateStops() {
+            const fromSelect = document.getElementById('fromStop');
+            const toSelect = document.getElementById('toStop');
+
+            // Clear existing options except first
+            fromSelect.innerHTML = '<option value="">-- Select your starting stop --</option>';
+            toSelect.innerHTML = '<option value="">-- Select your destination --</option>';
+
+            busStops.forEach(stop => {
+                const option1 = document.createElement('option');
+                option1.value = stop.index;
+                option1.textContent = stop.name;
+                fromSelect.appendChild(option1);
+
+                const option2 = document.createElement('option');
+                option2.value = stop.index;
+                option2.textContent = stop.name;
+                toSelect.appendChild(option2);
+            });
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Radius of the Earth in km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        function findNearestStop(lat, lon) {
+            let nearest = null;
+            let minDistance = Infinity;
+
+            busStops.forEach(stop => {
+                const distance = calculateDistance(lat, lon, stop.lat, stop.lon);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    nearest = stop;
+                }
+            });
+
+            return { stop: nearest, distance: minDistance };
+        }
+
+        function getLocation() {
+            const statusIcon = document.getElementById('statusIcon');
+            const locationStatus = document.getElementById('locationStatus');
+            const errorMessage = document.getElementById('errorMessage');
+            const btn = document.getElementById('locationBtn');
+
+            errorMessage.innerHTML = '';
+            btn.disabled = true;
+            btn.textContent = '📡 Getting location...';
+
+            if (!navigator.geolocation) {
+                errorMessage.innerHTML = '<div class="error">Geolocation is not supported by your browser</div>';
+                btn.disabled = false;
+                btn.textContent = '📍 Get My Location';
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    userLocation = {
+                        lat: position.coords.latitude,
+                        lon: position.coords.longitude
+                    };
+
+                    statusIcon.classList.add('active');
+                    locationStatus.textContent = 'Location found!';
+                    
+                    document.getElementById('coordinates').textContent = 
+                        `Lat: ${userLocation.lat.toFixed(6)}, Lon: ${userLocation.lon.toFixed(6)}`;
+
+                    const nearest = findNearestStop(userLocation.lat, userLocation.lon);
+                    
+                    document.getElementById('fromStop').value = nearest.stop.index;
+                    
+                    const distanceKm = nearest.distance.toFixed(2);
+                    const distanceM = (nearest.distance * 1000).toFixed(0);
+                    
+                    locationStatus.innerHTML = `Nearest stop: <strong>${nearest.stop.name}</strong> (${distanceM}m away)`;
+                    
+                    btn.textContent = '✓ Location Updated';
+                    btn.disabled = false;
+
+                    calculateRoute();
+                },
+                (error) => {
+                    let errorMsg = 'Unable to retrieve your location';
+                    
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMsg = 'Location permission denied. Please enable location access.';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMsg = 'Location information unavailable.';
+                            break;
+                        case error.TIMEOUT:
+                            errorMsg = 'Location request timed out.';
+                            break;
+                    }
+                    
+                    errorMessage.innerHTML = `<div class="error">${errorMsg}</div>`;
+                    statusIcon.classList.remove('active');
+                    locationStatus.textContent = 'Location not available';
+                    btn.disabled = false;
+                    btn.textContent = '📍 Get My Location';
+                }
+            );
+        }
+
+        function getNextBuses(stopIndex) {
+            const now = new Date();
+            const currentMinutes = now.getHours() * 60 + now.getMinutes();
+            
+            const nextBuses = [];
+            
+            busSchedule.forEach(time => {
+                const [hours, minutes] = time.split(':').map(Number);
+                const departureMinutes = hours * 60 + minutes;
+                const arrivalMinutes = departureMinutes + stopIndex; // 1 minute per stop
+                
+                if (arrivalMinutes >= currentMinutes) {
+                    const arrivalHours = Math.floor(arrivalMinutes / 60);
+                    const arrivalMins = arrivalMinutes % 60;
+                    const arrivalTime = `${String(arrivalHours).padStart(2, '0')}:${String(arrivalMins).padStart(2, '0')}`;
+                    
+                    const waitMinutes = arrivalMinutes - currentMinutes;
+                    
+                    nextBuses.push({
+                        time: arrivalTime,
+                        wait: waitMinutes
+                    });
+                }
+            });
+            
+            return nextBuses.slice(0, 3);
+        }
+
+        function calculateRoute() {
+            const fromIndex = parseInt(document.getElementById('fromStop').value);
+            const toIndex = parseInt(document.getElementById('toStop').value);
+            const routeInfo = document.getElementById('routeInfo');
+
+            if (isNaN(fromIndex) || isNaN(toIndex)) {
+                routeInfo.classList.remove('show');
+                return;
+            }
+
+            if (fromIndex >= toIndex) {
+                document.getElementById('errorMessage').innerHTML = 
+                    '<div class="error">Please select a destination that comes after your starting point on the route.</div>';
+                routeInfo.classList.remove('show');
+                return;
+            }
+
+            document.getElementById('errorMessage').innerHTML = '';
+
+            const fromStop = busStops[fromIndex];
+            const toStop = busStops[toIndex];
+            const stopsCount = toIndex - fromIndex;
+            const travelTime = stopsCount; // 1 minute per stop
+
+            document.getElementById('fromDisplay').textContent = fromStop.name;
+            document.getElementById('toDisplay').textContent = toStop.name;
+            document.getElementById('stopsCount').textContent = stopsCount;
+            document.getElementById('travelTime').textContent = `${travelTime} minutes`;
+
+            const nextBuses = getNextBuses(fromIndex);
+            const busTimesDiv = document.getElementById('busTimes');
+            
+            if (nextBuses.length === 0) {
+                busTimesDiv.innerHTML = '<div class="bus-time"><span class="info-label">No more buses today</span></div>';
+            } else {
+                busTimesDiv.innerHTML = nextBuses.map(bus => `
+                    <div class="bus-time">
+                        <span class="time-large">${bus.time}</span>
+                        <span class="time-info">in ${bus.wait} min</span>
+                    </div>
+                `).join('');
+            }
+
+            routeInfo.classList.add('show');
+        }
+
+        // Initialize
+        populateStops();
+    </script>
+</body>
+</html>
